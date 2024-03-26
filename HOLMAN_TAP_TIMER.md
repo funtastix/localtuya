@@ -647,7 +647,7 @@ A switch that turns on or off a schedule (A, B, or C). This is the example for S
               {% for item in l %}
                 {% set data.items = data.items + [ base[item] ] %}
               {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] + 1 | bitwise_and(1)) + (data.items[7] | bitwise_and(254)) ] + data.items[8:] %}
+              {% set data.items = data.items[:7] + [ ((data.items[7] + 1) | bitwise_and(1)) + (data.items[7] | bitwise_and(254)) ] + data.items[8:] %}
               {% set res = namespace(items=[]) %}
               {% set char = base.keys() | list %}
               {% for item in data.items %}
@@ -666,7 +666,7 @@ A switch that turns on or off a schedule (A, B, or C). This is the example for S
               {% for item in l %}
                 {% set data.items = data.items + [ base[item] ] %}
               {% endfor %}
-              {% set data.items = data.items[:7] + [ ((data.items[7] + 1) | bitwise_and(1)) + (data.items[7] | bitwise_and(254)) ] + data.items[8:] %}
+              {% set data.items = data.items[:7] + [ ((data.items[7] - 1) | bitwise_and(1)) + (data.items[7] | bitwise_and(254)) ] + data.items[8:] %}
               {% set res = namespace(items=[]) %}
               {% set char = base.keys() | list %}
               {% for item in data.items %}

@@ -1,0 +1,5 @@
+{% macro holman_start_a_tuesday_switch_state(data) %}
+
+{{ data[7] | bitwise_and(32) > 0 }}
+
+{% endmacro %}

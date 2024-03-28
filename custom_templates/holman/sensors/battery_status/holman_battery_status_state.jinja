@@ -1,0 +1,11 @@
+{% macro holman_battery_status_state(entity_id) %}
+
+{% set mapper = {
+  '0':'Empty',
+  '1':'Half',
+  '2':'Full'
+} %}
+{% set state = states(entity_id) %}
+{{ mapper[state] if state in mapper else state }}
+
+{% endmacro %}

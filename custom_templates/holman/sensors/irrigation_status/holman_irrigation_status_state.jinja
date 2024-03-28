@@ -1,0 +1,12 @@
+{% macro holman_irrigation_status_state(entity_id) %}
+
+{% set mapper = {
+  '0':'Not Watering',
+  '1':'Manual Watering',
+  '2':'Watering A/B/C',
+  '3':'Rain Delay Active'
+} %}
+{% set state = states(entity_id) %}
+{{ mapper[state] if state in mapper else state }}
+
+{% endmacro %}

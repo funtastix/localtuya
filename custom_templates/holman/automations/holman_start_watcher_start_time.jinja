@@ -1,0 +1,7 @@
+{% macro holman_start_watcher_start_time(data) %}
+
+{% set hs = data[1] | bitwise_and(15) * 16 + data[2] | bitwise_and(60) / 4 %}
+{% set ms = data[2] | bitwise_and(3) + data[3] %}
+{{ "%02d" | format(hs) ~ ":" ~ "%02d" | format(ms) ~ ":00" }}
+
+{% endmacro %}

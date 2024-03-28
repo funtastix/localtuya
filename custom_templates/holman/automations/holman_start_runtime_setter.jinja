@@ -1,0 +1,17 @@
+{% macro holman_start_runtime_setter(base, entity_id, entity_start_buffer_id) %}
+
+{% set h = states(entity_id).split(":")[0] %}
+{% set m = states(entity_id).split(":")[1] | int %}
+{% set d1 = ( h | int | bitwise_and(252) / 4 ) | int %}
+{% set d2 = ( h | int | bitwise_and(3) * 16 + m | int | bitwise_and(240) / 16 ) | int %}
+{% set data = namespace(items=[]) %}
+{% set l = states(entity_start_buffer_id) | list %}
+{% for item in l %}
+  {% set data.items = data.items + [ base[item] ] %}
+{% endfor %}
+{% set d3 = ( m | int | bitwise_and(15) * 4) | int + data.items[6] | bitwise_and(3) %}
+{% set data.items = data.items[:4] + [d1, d2, d3 ] + data.items[7:] %} 
+{% set data = data.items | list %}
+{{ {'data': data} | to_json }}
+
+{% endmacro %}

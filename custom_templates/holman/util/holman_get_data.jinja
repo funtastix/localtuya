@@ -1,0 +1,11 @@
+{% macro holman_get_data(base, entity_id) %}
+
+{% set data = namespace(items=[]) %}
+{% set l = states(entity_id) | list %}
+{% for item in l %}
+  {% set data.items = data.items + [ base[item] ] %}
+{% endfor %}
+{% set data = data.items | list %}
+{{ {'data': data} | to_json }}
+
+{% endmacro %}

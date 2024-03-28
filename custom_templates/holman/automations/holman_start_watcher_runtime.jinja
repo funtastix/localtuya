@@ -1,0 +1,7 @@
+{% macro holman_start_watcher_runtime(data) %}
+
+{% set h = data.items[4] | bitwise_and(63) * 4 + data.items[5] | bitwise_and(48) / 16 %}
+{% set m = data.items[5] | bitwise_and(15) * 16 + data.items[6] | bitwise_and(60) / 4 %}
+{{ "%02d" | format(h) ~ ":" ~  "%02d" | format(m) ~ ":00" }}
+
+{% endmacro %}

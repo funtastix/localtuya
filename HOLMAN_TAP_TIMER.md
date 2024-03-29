@@ -230,6 +230,8 @@ Once installed via HACS, the main entities should be there. There's a few little
 3. Some controls are not accessible
 4. The manual switch is inverted
 
+In remedying these, we'll make use of custom jinja templates (added in HA 2023.4). **Place the custom_templates folder in your config directory**
+
 ### Buffering Values
 
 To remedy point 1,
@@ -240,39 +242,30 @@ To remedy point 1,
 For the Start entities (schedules):
 
 ```
-  wx1_start_a_buffer:
-    friendly_name: "WX1 Start A Buffer"
-    initial_value: "AAAAAAAAAAAA"
-    value_template: >
-      {% if is_state('sensor.wx1_start_a_encoded','unavailable') or is_state('sensor.wx1_start_a_encoded','unknown') %}
-        {{ states('var.wx1_start_a_buffer') }}
-      {% else %}
-        {{ states('sensor.wx1_start_a_encoded') }}
-      {% endif %}
-    tracked_entity_id:
-      - sensor.wx1_start_a_encoded
-  wx1_start_b_buffer:
-    friendly_name: "WX1 Start B Buffer"
-    initial_value: "AAAAAAAAAAAA"
-    value_template: >
-      {% if is_state('sensor.wx1_start_b_encoded','unavailable') or is_state('sensor.wx1_start_b_encoded','unknown') %}
-        {{ states('var.wx1_start_b_buffer') }}
-      {% else %}
-        {{ states('sensor.wx1_start_b_encoded') }}
-      {% endif %}
-    tracked_entity_id:
-      - sensor.wx1_start_b_encoded
-  wx1_start_c_buffer:
-    friendly_name: "WX1 Start C Buffer"
-    initial_value: "AAAAAAAAAAAA"
-    value_template: >
-      {% if is_state('sensor.wx1_start_c_encoded','unavailable') or is_state('sensor.wx1_start_c_encoded','unknown') %}
-        {{ states('var.wx1_start_c_buffer') }}
-      {% else %}
-        {{ states('sensor.wx1_start_c_encoded') }}
-      {% endif %}
-    tracked_entity_id:
-      - sensor.wx1_start_c_encoded
+wx1_start_a_buffer:
+  friendly_name: "wx1 Start A Buffer"
+  initial_value: "AAAAAAAAAAAA"
+  value_template: >
+    {% from 'holman/variables/start_buffer/holman_start_buffer_var.jinja' import holman_start_buffer_var %}
+    {{ holman_start_buffer_var('var.wx1_start_a_buffer', 'sensor.wx1_start_a_encoded') }}
+  tracked_entity_id:
+    - sensor.wx1_start_a_encoded
+wx1_start_b_buffer:
+  friendly_name: "wx1 Start B Buffer"
+  initial_value: "AAAAAAAAAAAA"
+  value_template: >
+    {% from 'holman/variables/start_buffer/holman_start_buffer_var.jinja' import holman_start_buffer_var %}
+    {{ holman_start_buffer_var('var.wx1_start_b_buffer', 'sensor.wx1_start_b_encoded') }}
+  tracked_entity_id:
+    - sensor.wx1_start_b_encoded
+wx1_start_c_buffer:
+  friendly_name: "wx1 Start C Buffer"
+  initial_value: "AAAAAAAAAAAA"
+  value_template: >
+    {% from 'holman/variables/start_buffer/holman_start_buffer_var.jinja' import holman_start_buffer_var %}
+    {{ holman_start_buffer_var('var.wx1_start_c_buffer', 'sensor.wx1_start_c_encoded') }}
+  tracked_entity_id:
+    - sensor.wx1_start_c_encoded
 ```
 
 For the sensor entities add this (if you have a sensor):
@@ -325,15 +318,10 @@ For the main unit:
 
 ```
 - sensor:
-  - name: "WX1 Battery Status"
+  - name: "wx1 Battery Status"
     state: >-
-        {% set mapper = {
-          '0':'Empty',
-          '1':'Half',
-          '2':'Full'
-        } %}
-        {% set state = states('sensor.wx1_battery_level') %}
-        {{ mapper[state] if state in mapper else state }}
+        {% from 'holman/sensors/battery_status/holman_battery_status_state.jinja' import holman_battery_status_state %}
+        {{ holman_battery_status_state('sensor.wx1_battery_level') }}
     icon: >-
         {% if is_state('sensor.wx1_battery_level', '0') %}
           mdi:battery-outline
@@ -343,16 +331,10 @@ For the main unit:
           mdi:battery
         {% endif %}
 - sensor:
-  - name: "WX1 Irrigation Status"
+  - name: "wx1 Irrigation Status"
     state: >-
-        {% set mapper = {
-          '0':'Not Watering',
-          '1':'Manual Watering',
-          '2':'Watering A/B/C',
-          '3':'Rain Delay Active'
-        } %}
-        {% set state = states('sensor.wx1_tap_timer_status') %}
-        {{ mapper[state] if state in mapper else state }}
+        {% from 'holman/sensors/irrigation_status/holman_irrigation_status_state.jinja' import holman_irrigation_status_state %}
+        {{ holman_irrigation_status_state('sensor.wx1_tap_timer_status') }}
     icon: >-
         {% if is_state('sensor.wx1_tap_timer_status', '0') %}
           mdi:water-off
@@ -364,30 +346,42 @@ For the main unit:
           mdi:weather-pouring
         {% endif %}
 - sensor:
-  - name: "WX1 Next Watering"
+  - name: "wx1 Next Watering"
     state: >-
-      {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-      {% set data = namespace(xitems=[]) %}
-      {% set lx = states('sensor.wx1_next_watering_encoded') | list %}
-      {% for item in lx %}
-        {% if item != "=" %}
-          {% set data.xitems = data.xitems + [ base[item] ] %}
-        {% endif %}
-      {% endfor %}
-      {% set bytecount = ( lx | length / 4 * 3 - ( lx | length - data.xitems | reject('undefined') | list | length )) | int %}
-      {% set dataw = namespace(witems=[]) %}
-      {% for cnt in range(0,lx | length, 4) %}
-        {% if cnt + 1 < data.xitems | length %}
-          {% set dataw.witems = dataw.witems + [ (data.xitems[cnt] | bitwise_and(63) * 4 + ( data.xitems[cnt + 1] | bitwise_and(48) / 16)) ] %}
-        {% endif %}
-        {% if cnt + 2 < data.xitems | length %}
-          {% set dataw.witems = dataw.witems + [ (data.xitems[cnt + 1] | bitwise_and(15) * 16 + data.xitems[cnt + 2] | bitwise_and(60) / 4) ] %}
-        {% endif %}
-        {% if cnt + 3 < data.xitems | length %}
-          {% set dataw.witems = dataw.witems + [ (data.xitems[cnt + 2] | bitwise_and(3) + data.xitems[cnt + 3]) ] %}
-        {% endif %}
-      {% endfor %}
-      {{ "N/A" if dataw.witems[2] == 0 else "%02d" | format(dataw.witems[2]) ~ "/" ~ "%02d" | format(dataw.witems[1]) ~ "/20" ~ "%02d" | format(dataw.witems[0]) ~ " at " ~ "%01d" | format(dataw.witems[3]) ~ ":" ~ "%02d" | format(dataw.witems[4]) }}
+      {% from 'holman/sensors/next_watering/holman_next_watering_state.jinja' import holman_next_watering_state %}
+      {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+      {% set base = (holman_get_base()|from_json).base %}
+      {{ holman_next_watering_state(base, 'sensor.wx1_next_watering_encoded') }}
+- sensor:
+  - name: "wx1 Start A"
+    state: >-
+      {% from 'holman/sensors/start/holman_start_state.jinja' import holman_start_state %}
+      {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+      {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+      {% set base = (holman_get_base()|from_json).base %}
+      {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+      {{ holman_start_state(base, data, states('var.wx1_start_a_buffer')) }}
+- sensor:
+  - name: "wx1 Start B"
+    state: >-
+      {% from 'holman/sensors/start/holman_start_state.jinja' import holman_start_state %}
+      {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+      {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+      {% set base = (holman_get_base()|from_json).base %}
+      {% set data = (holman_get_data(base, 'var.wx1_start_b_buffer')|from_json).data %}
+      {{ holman_start_state(base, data, states('var.wx1_start_b_buffer')) }}
+- sensor:
+  - name: "wx1 Start C"
+    state: >-
+      {% from 'holman/sensors/start/holman_start_state.jinja' import holman_start_state %}
+      {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+      {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+      {% set base = (holman_get_base()|from_json).base %}
+      {% set data = (holman_get_data(base, 'var.wx1_start_c_buffer')|from_json).data %}
+      {{ holman_start_state(base, data, states('var.wx1_start_c_buffer')) }}
+
+
+# No jinja template for flow count yet
 - sensor:
   - name: "WX1 Flow Count"
     state: >-
@@ -452,83 +446,12 @@ For the main unit:
     state_class: total
     device_class: water
     unit_of_measurement: L
-- sensor:
-  - name: "WX1 Start A"
-    state: >-
-      {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-      {% set data = namespace(items=[]) %}
-      {% set l = states('var.wx1_start_a_buffer') | list %}
-      {% for item in l %}
-        {% set data.items = data.items + [ base[item] ] %}
-      {% endfor %}
-      {% set hs = data.items[1] | bitwise_and(15) * 16 + data.items[2] | bitwise_and(60) / 4 %}
-      {% set ms = data.items[2] | bitwise_and(3) + data.items[3] %}
-      {% set h = data.items[4] | bitwise_and(63) * 4 + data.items[5] | bitwise_and(48) / 16 %}
-      {% set m = data.items[5] | bitwise_and(15) * 16 + data.items[6] | bitwise_and(60) / 4 %}
-      {% set sun = "Sun" if data.items[6] | bitwise_and(2) > 0 else "" %}
-      {% set mon = "Mon" if data.items[6] | bitwise_and(1) > 0 else "" %}
-      {% set tue = "Tue" if data.items[7] | bitwise_and(32) > 0 else "" %}
-      {% set wed = "Wed" if data.items[7] | bitwise_and(16) > 0 else "" %}
-      {% set thu = "Thu" if data.items[7] | bitwise_and(8) > 0 else "" %}
-      {% set fri = "Fri" if data.items[7] | bitwise_and(4) > 0 else "" %}
-      {% set sat = "Sat" if data.items[7] | bitwise_and(2) > 0 else "" %}
-      {% set enable = data.items[7] | bitwise_and(1) > 0 %}
-      {% set d = [ sun , mon , tue , wed , thu , fri , sat ] | reject("equalto","") | join(',') %}
-      {% set timing = "%02d" | format(hs) ~ ":" ~ "%02d" | format(ms) ~ " for " ~ "%02d" | format(h) ~ ":" ~  "%02d" | format(m) ~ "h" %}
-      {{ "Unavailable" if states('var.wx1_start_a_buffer') == "unavailable" else "On "  + "(" + d + ") at " + timing if enable else "Off" }}
-- sensor:
-  - name: "WX1 Start B"
-    state: >-
-      {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-      {% set data = namespace(items=[]) %}
-      {% set l = states('var.wx1_start_b_buffer') | list %}
-      {% for item in l %}
-        {% set data.items = data.items + [ base[item] ] %}
-      {% endfor %}
-      {% set hs = data.items[1] | bitwise_and(15) * 16 + data.items[2] | bitwise_and(60) / 4 %}
-      {% set ms = data.items[2] | bitwise_and(3) + data.items[3] %}
-      {% set h = data.items[4] | bitwise_and(63) * 4 + data.items[5] | bitwise_and(48) / 16 %}
-      {% set m = data.items[5] | bitwise_and(15) * 16 + data.items[6] | bitwise_and(60) / 4 %}
-      {% set sun = "Sun" if data.items[6] | bitwise_and(2) > 0 else "" %}
-      {% set mon = "Mon" if data.items[6] | bitwise_and(1) > 0 else "" %}
-      {% set tue = "Tue" if data.items[7] | bitwise_and(32) > 0 else "" %}
-      {% set wed = "Wed" if data.items[7] | bitwise_and(16) > 0 else "" %}
-      {% set thu = "Thu" if data.items[7] | bitwise_and(8) > 0 else "" %}
-      {% set fri = "Fri" if data.items[7] | bitwise_and(4) > 0 else "" %}
-      {% set sat = "Sat" if data.items[7] | bitwise_and(2) > 0 else "" %}
-      {% set enable = data.items[7] | bitwise_and(1) > 0 %}
-      {% set d = [ sun , mon , tue , wed , thu , fri , sat ] | reject("equalto","") | join(',') %}
-      {% set timing = "%02d" | format(hs) ~ ":" ~ "%02d" | format(ms) ~ " for " ~ "%02d" | format(h) ~ ":" ~  "%02d" | format(m) ~ "h" %}
-      {{ "Unavailable" if states('var.wx1_start_b_buffer') == "unavailable" else "On "  + "(" + d + ") at " + timing if enable else "Off" }}
-- sensor:
-  - name: "WX1 Start C"
-    state: >-
-      {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-      {% set data = namespace(items=[]) %}
-      {% set l = states('var.wx1_start_c_buffer') | list %}
-      {% for item in l %}
-        {% set data.items = data.items + [ base[item] ] %}
-      {% endfor %}
-      {% set hs = data.items[1] | bitwise_and(15) * 16 + data.items[2] | bitwise_and(60) / 4 %}
-      {% set ms = data.items[2] | bitwise_and(3) + data.items[3] %}
-      {% set h = data.items[4] | bitwise_and(63) * 4 + data.items[5] | bitwise_and(48) / 16 %}
-      {% set m = data.items[5] | bitwise_and(15) * 16 + data.items[6] | bitwise_and(60) / 4 %}
-      {% set sun = "Sun" if data.items[6] | bitwise_and(2) > 0 else "" %}
-      {% set mon = "Mon" if data.items[6] | bitwise_and(1) > 0 else "" %}
-      {% set tue = "Tue" if data.items[7] | bitwise_and(32) > 0 else "" %}
-      {% set wed = "Wed" if data.items[7] | bitwise_and(16) > 0 else "" %}
-      {% set thu = "Thu" if data.items[7] | bitwise_and(8) > 0 else "" %}
-      {% set fri = "Fri" if data.items[7] | bitwise_and(4) > 0 else "" %}
-      {% set sat = "Sat" if data.items[7] | bitwise_and(2) > 0 else "" %}
-      {% set enable = data.items[7] | bitwise_and(1) > 0 %}
-      {% set d = [ sun , mon , tue , wed , thu , fri , sat ] | reject("equalto","") | join(',') %}
-      {% set timing = "%02d" | format(hs) ~ ":" ~ "%02d" | format(ms) ~ " for " ~ "%02d" | format(h) ~ ":" ~  "%02d" | format(m) ~ "h" %}
-      {{ "Unavailable" if states('var.wx1_start_c_buffer') == "unavailable" else "On "  + "(" + d + ") at " + timing if enable else "Off" }}
 ```
 
 If you have the sensor attached, add these:
 
 ```
+# No jinja template for moisture and temperature count yet
 - sensor:
     - name: "WX1 Moisture Count"
       state: >-
@@ -624,71 +547,57 @@ A switch that turns on or off a schedule (A, B, or C). This is the example for S
 
 <pre>
     wx1_wx1_start_a_switch:
-      friendly_name: "WX1 Start A Switch"
+      friendly_name: "wx1 Start A Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set enable = data.items[7] | bitwise_and(1) > 0 %}
-          {{ enable }}
+          {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+          {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+          {% from 'holman/switches/start_a_switch/holman_start_a_switch_state.jinja' import holman_start_a_switch_state %}
+          {% set base = (holman_get_base()|from_json).base %}
+          {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+          {{ holman_start_a_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
         data:
-          device_id: <i><u><b>"XXX"</b></u></i>
-          dp: <i><u><b>110</b></u></i>
+          device_id: "XXX"
+          dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] + 1 | bitwise_and(1)) + (data.items[7] | bitwise_and(254)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_switch/holman_start_a_switch_on.jinja' import holman_start_a_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
-          device_id: <i><u><b>"XXX"</b></u></i>
-          dp: <i><u><b>110</b></u></i>
+          device_id: "XXX"
+          dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ ((data.items[7] + 1) | bitwise_and(1)) + (data.items[7] | bitwise_and(254)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_switch/holman_start_a_switch_off.jinja' import holman_start_a_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
 </pre>
 
 If you want full control, you can insert these full controls for each desired scheduler to map each day of the scheduler to a switch. Again. change the values, as per the on/off switch above:
 
 ```
     wx1_wx1_start_a_sun_switch:
-      friendly_name: "WX1 Start A Sunday Switch"
+      friendly_name: "wx1 Start A Sunday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[6] | bitwise_and(2) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/switches/start_a_sunday_switch/holman_start_a_sunday_switch_state.jinja' import holman_start_a_sunday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_sunday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -696,49 +605,37 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:6] + [ (data.items[6] | bitwise_and(253)) + 2 ] + data.items[7:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_sunday_switch/holman_start_a_sunday_switch_on.jinja' import holman_start_a_sunday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_sunday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:6] + [ (data.items[6] | bitwise_and(253)) ] + data.items[7:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_sunday_switch/holman_start_a_sunday_switch_off.jinja' import holman_start_a_sunday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_sunday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
     wx1_wx1_start_a_mon_switch:
-      friendly_name: "WX1 Start A Monday Switch"
+      friendly_name: "wx1 Start A Monday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[6] | bitwise_and(1) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/switches/start_a_monday_switch/holman_start_a_monday_switch_state.jinja' import holman_start_a_monday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_monday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -746,49 +643,38 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:6] + [ (data.items[6] | bitwise_and(254)) + 1 ] + data.items[7:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_monday_switch/holman_start_a_monday_switch_on.jinja' import holman_start_a_monday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_monday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:6] + [ (data.items[6] | bitwise_and(254)) ] + data.items[7:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_monday_switch/holman_start_a_monday_switch_off.jinja' import holman_start_a_monday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_monday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
     wx1_wx1_start_a_tue_switch:
-      friendly_name: "WX1 Start A Tuesday Switch"
+      friendly_name: "wx1 Start A Tuesday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[7] | bitwise_and(32) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_tuesday_switch/holman_start_a_tuesday_switch_state.jinja' import holman_start_a_tuesday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_tuesday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -796,49 +682,37 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(223)) + 32 ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_tuesday_switch/holman_start_a_tuesday_switch_on.jinja' import holman_start_a_tuesday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_tuesday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(223)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_tuesday_switch/holman_start_a_tuesday_switch_off.jinja' import holman_start_a_tuesday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_tuesday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
     wx1_wx1_start_a_wed_switch:
-      friendly_name: "WX1 Start A Wednesday Switch"
+      friendly_name: "wx1 Start A Wednesday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[7] | bitwise_and(16) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/switches/start_a_wednesday_switch/holman_start_a_wednesday_switch_state.jinja' import holman_start_a_wednesday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_wednesday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -846,49 +720,37 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(239)) + 16 ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_wednesday_switch/holman_start_a_wednesday_switch_on.jinja' import holman_start_a_wednesday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_wednesday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(239)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_wednesday_switch/holman_start_a_wednesday_switch_off.jinja' import holman_start_a_wednesday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_wednesday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
     wx1_wx1_start_a_thu_switch:
-      friendly_name: "WX1 Start A Thursday Switch"
+      friendly_name: "wx1 Start A Thursday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[7] | bitwise_and(8) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/switches/start_a_thursday_switch/holman_start_a_thursday_switch_state.jinja' import holman_start_a_thursday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_thursday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -896,49 +758,37 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(247)) + 8 ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_thursday_switch/holman_start_a_thursday_switch_on.jinja' import holman_start_a_thursday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_thursday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(247)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_thursday_switch/holman_start_a_thursday_switch_off.jinja' import holman_start_a_thursday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_thursday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
     wx1_wx1_start_a_fri_switch:
-      friendly_name: "WX1 Start A Friday Switch"
+      friendly_name: "wx1 Start A Friday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[7] | bitwise_and(4) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/switches/start_a_friday_switch/holman_start_a_friday_switch_state.jinja' import holman_start_a_friday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_friday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -946,49 +796,37 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(251)) + 4 ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_friday_switch/holman_start_a_friday_switch_on.jinja' import holman_start_a_friday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_friday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(251)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_friday_switch/holman_start_a_friday_switch_off.jinja' import holman_start_a_friday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_friday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
     wx1_wx1_start_a_sat_switch:
-      friendly_name: "WX1 Start A Saturday Switch"
+      friendly_name: "wx1 Start A Saturday Switch"
       value_template: >-
-          {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-          {% set data = namespace(items=[]) %}
-          {% set l = states('var.wx1_start_a_buffer') | list %}
-          {% for item in l %}
-            {% set data.items = data.items + [ base[item] ] %}
-          {% endfor %}
-          {% set day = data.items[7] | bitwise_and(2) > 0 %}
-          {{ day }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/switches/start_a_saturday_switch/holman_start_a_saturday_switch_state.jinja' import holman_start_a_saturday_switch_state %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {{ holman_start_a_saturday_switch_state(data) }}
       availability_template: "{{ states('var.wx1_start_a_buffer') != \"unavailable\" }}"
       turn_on:
         service: localtuya.set_dp
@@ -996,38 +834,28 @@ If you want full control, you can insert these full controls for each desired sc
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(253)) + 2 ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_saturday_switch/holman_start_a_saturday_switch_on.jinja' import holman_start_a_saturday_switch_on %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_saturday_switch_on(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
       turn_off:
         service: localtuya.set_dp
         data:
           device_id: "XXX"
           dp: 110
           value: >-
-              {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-              {% set data = namespace(items=[]) %}
-              {% set l = states('var.wx1_start_a_buffer') | list %}
-              {% for item in l %}
-                {% set data.items = data.items + [ base[item] ] %}
-              {% endfor %}
-              {% set data.items = data.items[:7] + [ (data.items[7] | bitwise_and(253)) ] + data.items[8:] %}
-              {% set res = namespace(items=[]) %}
-              {% set char = base.keys() | list %}
-              {% for item in data.items %}
-                {% set res.items = res.items + [ char[item] ] %}
-              {% endfor %}
-              {{ res.items | join }}
+            {% from 'holman/util/holman_get_base.jinja' import holman_get_base %}
+            {% from 'holman/util/holman_get_data.jinja' import holman_get_data %}
+            {% from 'holman/util/holman_get_char_string.jinja' import holman_get_char_string %}
+            {% from 'holman/switches/start_a_saturday_switch/holman_start_a_saturday_switch_off.jinja' import holman_start_a_saturday_switch_off %}
+            {% set base = (holman_get_base()|from_json).base %}
+            {% set data = (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data %}
+            {% set data = holman_start_a_saturday_switch_off(data)|from_json %}
+            {{ holman_get_char_string(base, data) }}
 ```
 
 Finally, to gain access to setting the time, add 2 input_datetime entities via `Settings -> Devices & Services -> Helpers`
@@ -1048,37 +876,30 @@ Then add the following 3 automations, again ensuring to replace dp `110` and dev
   action:
   - service: input_datetime.set_datetime
     data:
-      time: "{% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6,
-        'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P':
-        15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23,
-        'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g':
-        32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40,
-        'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x':
-        49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57,
-        '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %} {% set data = namespace(items=[])
-        %} {% set l = states('var.start_a_buffer') | list %} {% for item in
-        l %}\n  {% set data.items = data.items + [ base[item] ] %}\n{% endfor %} {%
-        set hs = data.items[1] | bitwise_and(15) * 16 + data.items[2] | bitwise_and(60)
-        / 4 %} {% set ms = data.items[2] | bitwise_and(3) + data.items[3] %} {{ \"%02d\"
-        | format(hs) ~ \":\" ~ \"%02d\" | format(ms) ~ \":00\" }}"
+      time: >-
+        {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+        from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+        from 'holman/util/holman_get_char_string.jinja' import
+        holman_get_char_string %} {% from
+        'holman/automations/holman_start_watcher_start_time.jinja' import
+        holman_start_watcher_start_time %} {% set base =
+        (holman_get_base()|from_json).base %} {% set data =
+        (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+        %} {{ holman_start_watcher_start_time(data) }}
     target:
       entity_id: input_datetime.wx1_start_a_start_time
   - service: input_datetime.set_datetime
     data:
-      time: "{% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6,
-        'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P':
-        15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23,
-        'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g':
-        32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40,
-        'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x':
-        49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57,
-        '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %} {% set data = namespace(items=[])
-        %} {% set l = states('var.start_a_buffer') | list %} {% for item in
-        l %}\n  {% set data.items = data.items + [ base[item] ] %}\n{% endfor %} {%
-        set h = data.items[4] | bitwise_and(63) * 4 + data.items[5] | bitwise_and(48)
-        / 16 %} {% set m = data.items[5] | bitwise_and(15) * 16 + data.items[6] |
-        bitwise_and(60) / 4 %} {{ \"%02d\" | format(h) ~ \":\" ~  \"%02d\" | format(m)
-        ~ \":00\" }}"
+      time: >-
+        {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+        from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+        from 'holman/util/holman_get_char_string.jinja' import
+        holman_get_char_string %} {% from
+        'holman/automations/holman_start_watcher_runtime.jinja' import
+        holman_start_watcher_runtime %} {% set base =
+        (holman_get_base()|from_json).base %} {% set data =
+        (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+        %} {{ holman_start_watcher_runtime(data) }}
     target:
       entity_id: input_datetime.wx1_start_a_runtime
   mode: single
@@ -1098,23 +919,19 @@ Then add the following 3 automations, again ensuring to replace dp `110` and dev
     data:
       device_id: XXX
       dp: 110
-      value: "{% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G':
-        6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P':
-        15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23,
-        'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g':
-        32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40,
-        'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x':
-        49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57,
-        '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %} {% set h = states(\"input_datetime.wx1_start_a_start_time\").split(\":\")[0]
-        %} {% set m = states(\"input_datetime.wx1_start_a_start_time\").split(\":\")[1]
-        | int %} {% set d1 = ( h | int | bitwise_and(240) / 16 ) | int %} {% set d2
-        = ( h | int | bitwise_and(15) * 4 ) | int %} {% set data = namespace(items=[])
-        %} {% set l = states('var.start_a_buffer') | list %} {% for item in
-        l %}\n  {% set data.items = data.items + [ base[item] ] %}\n{% endfor %} {%
-        set data.items = [ data.items[0], d1, d2, m ] + data.items[4:] %} {% set res
-        = namespace(items=[]) %} {% set char = base.keys() | list %} {% for item in
-        data.items %}\n  {% set res.items = res.items + [ char[item] ] %}\n{% endfor
-        %} {{ res.items | join }}"
+      value: >-
+        {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+        from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+        from 'holman/util/holman_get_char_string.jinja' import
+        holman_get_char_string %} {% from
+        'holman/automations/holman_start_time_setter.jinja' import
+        holman_start_time_setter %} {% set base =
+        (holman_get_base()|from_json).base %} {% set data =
+        (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+        %} {% set data = (holman_start_time_setter(base,
+        'input_datetime.wx1_start_a_start_time',
+        'var.wx1_start_a_buffer')|from_json).data %} {{
+        holman_get_char_string(base, data) }}
   mode: single
 - trigger:
   - platform: state
@@ -1132,24 +949,19 @@ Then add the following 3 automations, again ensuring to replace dp `110` and dev
     data:
       device_id: XXX
       dp: 110
-      value: "{% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G':
-        6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P':
-        15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23,
-        'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g':
-        32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40,
-        'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x':
-        49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57,
-        '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %} {% set h = states(\"input_datetime.wx1_start_a_runtime\").split(\":\")[0]
-        %} {% set m = states(\"input_datetime.wx1_start_a_runtime\").split(\":\")[1]
-        | int %} {% set d1 = ( h | int | bitwise_and(252) / 4 ) | int %} {% set d2
-        = ( h | int | bitwise_and(3) * 16 + m | int | bitwise_and(240) / 16 ) | int
-        %} {% set data = namespace(items=[]) %} {% set l = states('var.start_a_buffer')
-        | list %} {% for item in l %}\n  {% set data.items = data.items + [ base[item]
-        ] %}\n{% endfor %} {% set d3 = ( m | int | bitwise_and(15) * 4) | int + data.items[6]
-        | bitwise_and(3) %} {% set data.items = data.items[:4] + [ d1, d2, d3 ] +
-        data.items[7:] %} {% set res = namespace(items=[]) %} {% set char = base.keys()
-        | list %} {% for item in data.items %}\n  {% set res.items = res.items + [
-        char[item] ] %}\n{% endfor %} {{ res.items | join }}"
+      value: >-
+        {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+        from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+        from 'holman/util/holman_get_char_string.jinja' import
+        holman_get_char_string %} {% from
+        'holman/automations/holman_start_runtime_setter.jinja' import
+        holman_start_runtime_setter %} {% set base =
+        (holman_get_base()|from_json).base %} {% set data =
+        (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+        %} {% set data = (holman_start_runtime_setter(base,
+        'input_datetime.wx1_start_a_runtime',
+        'var.wx1_start_a_buffer')|from_json).data %} {{
+        holman_get_char_string(base, data) }}
   mode: single
 ```
 
@@ -1168,15 +980,15 @@ Call Service input_datetime.set_datetime (in yaml)
 service: input_datetime.set_datetime
 data:
   time: >-
-    {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-    {% set data = namespace(items=[]) %}
-    {% set l = states('var.wx1_start_a_buffer') | list %}
-    {% for item in l %}
-      {% set data.items = data.items + [ base[item] ] %}
-    {% endfor %}
-    {% set hs = data.items[1] | bitwise_and(15) * 16 + data.items[2] | bitwise_and(60) / 4 %}
-    {% set ms = data.items[2] | bitwise_and(3) + data.items[3] %}
-    {{ "%02d" | format(hs) ~ ":" ~ "%02d" | format(ms) ~ ":00" }}
+    {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+    from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+    from 'holman/util/holman_get_char_string.jinja' import
+    holman_get_char_string %} {% from
+    'holman/automations/holman_start_watcher_start_time.jinja' import
+    holman_start_watcher_start_time %} {% set base =
+    (holman_get_base()|from_json).base %} {% set data =
+    (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+    %} {{ holman_start_watcher_start_time(data) }}
 target:
   entity_id: input_datetime.wx1_start_a_start_time
 ```
@@ -1185,15 +997,15 @@ Call Service input_datetime.set_datetime (in yaml)
 service: input_datetime.set_datetime
 data:
   time: >-
-    {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-    {% set data = namespace(items=[]) %}
-    {% set l = states('var.wx1_start_a_buffer') | list %}
-    {% for item in l %}
-      {% set data.items = data.items + [ base[item] ] %}
-    {% endfor %}
-    {% set h = data.items[4] | bitwise_and(63) * 4 + data.items[5] | bitwise_and(48) / 16 %}
-    {% set m = data.items[5] | bitwise_and(15) * 16 + data.items[6] | bitwise_and(60) / 4 %}
-    {{ "%02d" | format(h) ~ ":" ~  "%02d" | format(m) ~ ":00" }}
+    {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+    from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+    from 'holman/util/holman_get_char_string.jinja' import
+    holman_get_char_string %} {% from
+    'holman/automations/holman_start_watcher_runtime.jinja' import
+    holman_start_watcher_runtime %} {% set base =
+    (holman_get_base()|from_json).base %} {% set data =
+    (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+    %} {{ holman_start_watcher_runtime(data) }}
 target:
   entity_id: input_datetime.wx1_start_a_runtime
 ```
@@ -1219,23 +1031,18 @@ data:
   device_id: XXX
   dp: 110
   value: >-
-    {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-    {% set h = states("input_datetime.wx1_start_a_start_time").split(":")[0] %}
-    {% set m = states("input_datetime.wx1_start_a_start_time").split(":")[1] | int %}
-    {% set d1 = ( h | int | bitwise_and(240) / 16 ) | int %}
-    {% set d2 = ( h | int | bitwise_and(15) * 4 ) | int %}
-    {% set data = namespace(items=[]) %}
-    {% set l = states('var.wx1_start_a_buffer') | list %}
-    {% for item in l %}
-      {% set data.items = data.items + [ base[item] ] %}
-    {% endfor %}
-    {% set data.items = [ data.items[0], d1, d2, m ] + data.items[4:] %}
-    {% set res = namespace(items=[]) %}
-    {% set char = base.keys() | list %}
-    {% for item in data.items %}
-      {% set res.items = res.items + [ char[item] ] %}
-    {% endfor %}
-    {{ res.items | join }}
+    {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+    from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+    from 'holman/util/holman_get_char_string.jinja' import
+    holman_get_char_string %} {% from
+    'holman/automations/holman_start_time_setter.jinja' import
+    holman_start_time_setter %} {% set base =
+    (holman_get_base()|from_json).base %} {% set data =
+    (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+    %} {% set data = (holman_start_time_setter(base,
+    'input_datetime.wx1_start_a_start_time',
+    'var.wx1_start_a_buffer')|from_json).data %} {{
+    holman_get_char_string(base, data) }}
 ```
 
 #### 2. WX1 Start A Start Runtime Setter
@@ -1259,24 +1066,18 @@ data:
   device_id: XXX
   dp: 110
   value: >-
-    {% set base = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6, 'H': 7, 'I': 8, 'J': 9, 'K': 10, 'L': 11, 'M': 12, 'N': 13, 'O': 14, 'P': 15, 'Q': 16, 'R': 17, 'S': 18, 'T': 19, 'U': 20, 'V': 21, 'W': 22, 'X': 23, 'Y': 24, 'Z': 25, 'a': 26, 'b': 27, 'c': 28, 'd': 29, 'e': 30, 'f': 31, 'g': 32, 'h': 33, 'i': 34, 'j': 35, 'k': 36, 'l': 37, 'm': 38, 'n': 39, 'o': 40, 'p': 41, 'q': 42, 'r': 43, 's': 44, 't': 45, 'u': 46, 'v': 47, 'w': 48, 'x': 49, 'y': 50, 'z': 51, '0': 52, '1': 53, '2': 54, '3': 55, '4': 56, '5': 57, '6': 58, '7': 59, '8': 60, '9': 61, '+': 62, '/': 63} %}
-    {% set h = states("input_datetime.wx1_start_a_runtime").split(":")[0] %}
-    {% set m = states("input_datetime.wx1_start_a_runtime").split(":")[1] | int %}
-    {% set d1 = ( h | int | bitwise_and(252) / 4 ) | int %}
-    {% set d2 = ( h | int | bitwise_and(3) * 16 + m | int | bitwise_and(240) / 16 ) | int %}
-    {% set data = namespace(items=[]) %}
-    {% set l = states('var.wx1_start_a_buffer') | list %}
-    {% for item in l %}
-      {% set data.items = data.items + [ base[item] ] %}
-    {% endfor %}
-    {% set d3 = ( m | int | bitwise_and(15) * 4) | int + data.items[6] | bitwise_and(3) %}
-    {% set data.items = data.items[:4] + [ d1, d2, d3 ] + data.items[7:] %}
-    {% set res = namespace(items=[]) %}
-    {% set char = base.keys() | list %}
-    {% for item in data.items %}
-      {% set res.items = res.items + [ char[item] ] %}
-    {% endfor %}
-    {{ res.items | join }}
+    {% from 'holman/util/holman_get_base.jinja' import holman_get_base %} {%
+    from 'holman/util/holman_get_data.jinja' import holman_get_data %} {%
+    from 'holman/util/holman_get_char_string.jinja' import
+    holman_get_char_string %} {% from
+    'holman/automations/holman_start_runtime_setter.jinja' import
+    holman_start_runtime_setter %} {% set base =
+      (holman_get_base()|from_json).base %} {% set data =
+      (holman_get_data(base, 'var.wx1_start_a_buffer')|from_json).data
+      %} {% set data = (holman_start_runtime_setter(base,
+      'input_datetime.wx1_start_a_runtime',
+      'var.wx1_start_a_buffer')|from_json).data %} {{
+      holman_get_char_string(base, data) }}
 ```
 
 ## UI Setup

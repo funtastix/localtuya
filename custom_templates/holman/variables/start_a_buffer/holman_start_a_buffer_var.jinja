@@ -1,0 +1,9 @@
+{% macro holman_start_a_buffer_var(buffer_entity_id, entity_id) %}
+
+{% if is_state(entity_id,'unavailable') or is_state(entity_id,'unknown') %}
+  {{ states(buffer_entity_id) }}
+{% else %}
+  {{ states(entity_id) }}
+{% endif %}
+
+{% endmacro %}

@@ -1,0 +1,5 @@
+{% macro holman_start_a_sunday_switch_off(data) %}
+
+{{ data[:6] + [ (data[6] | bitwise_and(253)) ] + data[7:] }}
+
+{% endmacro %}

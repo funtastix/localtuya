@@ -1,0 +1,10 @@
+{% macro holman_get_char_string(base, data) %}
+
+{% set res = namespace(items=[]) %}
+{% set char = base.keys() | list %}
+{% for item in data %}
+  {% set res.items = res.items + [ char[item] ] %}
+{% endfor %}
+{{ res.items | join }}
+
+{% endmacro %}

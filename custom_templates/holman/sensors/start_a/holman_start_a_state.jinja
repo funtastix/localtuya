@@ -1,0 +1,19 @@
+{% macro holman_start_a_state(base, data, buffer_state) %}
+
+{% set hs = data[1] | bitwise_and(15) * 16 + data[2] | bitwise_and(60) / 4 %}
+{% set ms = data[2] | bitwise_and(3) + data[3] %}
+{% set h = data[4] | bitwise_and(63) * 4 + data[5] | bitwise_and(48) / 16 %}
+{% set m = data[5] | bitwise_and(15) * 16 + data[6] | bitwise_and(60) / 4 %}
+{% set sun = "Sun" if data[6] | bitwise_and(2) > 0 else "" %}
+{% set mon = "Mon" if data[6] | bitwise_and(1) > 0 else "" %}
+{% set tue = "Tue" if data[7] | bitwise_and(32) > 0 else "" %}
+{% set wed = "Wed" if data[7] | bitwise_and(16) > 0 else "" %}
+{% set thu = "Thu" if data[7] | bitwise_and(8) > 0 else "" %}
+{% set fri = "Fri" if data[7] | bitwise_and(4) > 0 else "" %}
+{% set sat = "Sat" if data[7] | bitwise_and(2) > 0 else "" %}
+{% set enable = data[7] | bitwise_and(1) > 0 %}
+{% set d = [ sun , mon , tue , wed , thu , fri , sat ] | reject("equalto","") | join(',') %}
+{% set timing = "%02d" | format(hs) ~ ":" ~ "%02d" | format(ms) ~ " for " ~ "%02d" | format(h) ~ ":" ~  "%02d" | format(m) ~ "h" %}
+{{ "Unavailable" if buffer_state == "unavailable" else "On "  + "(" + d + ") at " + timing if enable else "Off" }}
+
+{% endmacro %}

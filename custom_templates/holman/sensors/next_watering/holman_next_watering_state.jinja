@@ -1,0 +1,25 @@
+{% macro holman_next_watering_state(base, entity_id) %}
+
+{% set data = namespace(xitems=[]) %}
+{% set lx = states(entity_id) | list %}
+{% for item in lx %}
+  {% if item != "=" %}
+    {% set data.xitems = data.xitems + [ base[item] ] %}
+  {% endif %}
+{% endfor %}
+{% set bytecount = ( lx | length / 4 * 3 - ( lx | length - data.xitems | reject('undefined') | list | length )) | int %}
+{% set dataw = namespace(witems=[]) %}
+{% for cnt in range(0,lx | length, 4) %}
+  {% if cnt + 1 < data.xitems | length %}
+    {% set dataw.witems = dataw.witems + [ (data.xitems[cnt] | bitwise_and(63) * 4 + ( data.xitems[cnt + 1] | bitwise_and(48) / 16)) ] %}
+  {% endif %}
+  {% if cnt + 2 < data.xitems | length %}
+    {% set dataw.witems = dataw.witems + [ (data.xitems[cnt + 1] | bitwise_and(15) * 16 + data.xitems[cnt + 2] | bitwise_and(60) / 4) ] %}
+  {% endif %}
+  {% if cnt + 3 < data.xitems | length %}
+    {% set dataw.witems = dataw.witems + [ (data.xitems[cnt + 2] | bitwise_and(3) + data.xitems[cnt + 3]) ] %}
+  {% endif %}
+{% endfor %}
+{{ "N/A" if dataw.witems[2] == 0 else "%02d" | format(dataw.witems[2]) ~ "/" ~ "%02d" | format(dataw.witems[1]) ~ "/20" ~ "%02d" | format(dataw.witems[0]) ~ " at " ~ "%01d" | format(dataw.witems[3]) ~ ":" ~ "%02d" | format(dataw.witems[4]) }}
+
+{% endmacro %}
